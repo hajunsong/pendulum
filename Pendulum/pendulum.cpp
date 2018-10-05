@@ -138,6 +138,8 @@ Pendulum::Pendulum(uint numbody)
 	}
 
 	integr = new Integrator(h, Y.len);
+
+
 }
 
 Pendulum::~Pendulum()
@@ -164,15 +166,25 @@ void Pendulum::run()
 }
 
 void Pendulum::analysis() {
-	// Y2qdq
+	Y2qdq();
+
+	kinematics_analysis();
+	dynamics_analysis();
+
+	dqddq2Yp();
+}
+
+void Pendulum::Y2qdq()
+{
 	for (uint i = 0; i < num_body; i++) {
 		body[i].qi = Y(i);
 	}
 	for (uint i = 0; i < num_body; i++) {
 		body[i].qi_dot = Y(i + num_body);
 	}
+}
 
-	// Body analysis
+void Pendulum::kinematics_analysis() {
 	for (uint i = 0; i < num_body; i++) {
 		// Orientation
 		body[i].Aijpp << cos(body[i].qi), -sin(body[i].qi), 0,
@@ -236,8 +248,9 @@ void Pendulum::analysis() {
 		body[i].Di = (body[i].rit_dot*body[i].Hi + body[i].rit * body[i].dHi
 			<< body[i].dHi)*body[i].qi_dot;
 	}
+}
 
-	// System EQM
+void Pendulum::dynamics_analysis() {
 	for (int i = num_body - 1; i >= 0; i--) {
 		body[i].Ki = body[i].Mih;
 		body[i].Li = body[i].Qih;
@@ -278,8 +291,9 @@ void Pendulum::analysis() {
 	for (uint i = 0; i < num_body; i++) {
 		body[i].qi_ddot = dYh(i);
 	}
+}
 
-	// dqddq2Yp
+void Pendulum::dqddq2Yp() {
 	for (uint i = 0; i < num_body; i++) {
 		Yp(i) = body[i].qi_dot;
 	}
@@ -296,7 +310,6 @@ void Pendulum::save_data()
 	}
 	fprintf_s(fp, "\n");
 }
-
 Matrix Pendulum::ludcmp(Matrix A, uint* indx)
 {
 	int n = A.rows;
@@ -350,7 +363,6 @@ Matrix Pendulum::ludcmp(Matrix A, uint* indx)
 	delete[] vv;
 	return fac;
 }
-
 Vector Pendulum::lubksb(Matrix fac, uint* indx, Vector b)
 {
 	int n = fac.rows;

@@ -2,7 +2,7 @@
 #include "pendulum.h"
 
 int main() {
-	uint num_body = 6;
+	uint num_body = 1;
 	Pendulum pendulum(num_body);
 	pendulum.run();
 

@@ -391,7 +391,11 @@ private:
 	FILE *fp;
 
 	void analysis();
-		Matrix ludcmp(Matrix a, uint* indx);
-		Vector lubksb(Matrix fac, uint* indx, Vector b);
+		void Y2qdq();
+		void kinematics_analysis();
+		void dynamics_analysis();
+			Matrix ludcmp(Matrix a, uint* indx);
+			Vector lubksb(Matrix fac, uint* indx, Vector b);
+		void dqddq2Yp();
 	void save_data();
 };
