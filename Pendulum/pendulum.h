@@ -177,7 +177,7 @@ public:
 		}
 		return mat;
 	}
-	template <typename T> Matrix operator=(T rhs) {
+	Matrix operator=(Matrix rhs) {
 		this->rows = rhs.rows;
 		this->cols = rhs.cols;
 		this->len = rhs.len;
@@ -369,6 +369,11 @@ public:
 	Vector Li = Vector(6);
 	// Acceleration
 	double qi_ddot;
+	// Generalized Force(Torque)
+	double Q = 0;
+	// Gravity force
+	Vector Fg = Vector(6);
+	double Tg = 0;
 };
 
 class Pendulum
@@ -394,6 +399,7 @@ private:
 		void Y2qdq();
 		void kinematics_analysis();
 		void dynamics_analysis();
+			void GeneralizedMassForce();
 			Matrix ludcmp(Matrix a, uint* indx);
 			Vector lubksb(Matrix fac, uint* indx, Vector b);
 		void dqddq2Yp();

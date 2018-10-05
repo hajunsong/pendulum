@@ -208,60 +208,18 @@ void Pendulum::kinematics_analysis() {
 		}
 		body[i].rhoi = body[i].Ai * body[i].rhoip;
 		body[i].ric = body[i].ri + body[i].rhoi;
-		// Velocity State
-		body[i].rit = body[i].ri.tilde();
-		body[i].Bi = body[i].rit * body[i].Hi
-			<< body[i].Hi;
-		if (i == 0) {
-			body[i].Yih = body[i].Bi * body[i].qi_dot;
-		}
-		else {
-			body[i].Yih = body[i - 1].Yih + body[i].Bi * body[i].qi_dot;
-		}
-		// Cartesian Velocity
-		body[i].Ti = (Matrix::eye(3), -body[i].rit)
-			<< (Matrix::zeros(3, 3), Matrix::eye(3));
-		body[i].Yib = body[i].Ti * body[i].Yih;
-		body[i].ri_dot << body[i].Yib(0), body[i].Yib(1), body[i].Yib(2);
-		body[i].wi << body[i].Yib(3), body[i].Yib(4), body[i].Yib(5);
-		body[i].wit = body[i].wi.tilde();
-		body[i].ric_dot = body[i].ri_dot + body[i].wit * body[i].rhoi;
-		// Mass & Force
+		// Inertial matrix
 		Matrix Ai_Cii = body[i].Ai * body[i].Cii;
 		body[i].Jic = Ai_Cii * body[i].Jip*Ai_Cii.t();
-		body[i].rict = body[i].ric.tilde();
-		body[i].rict_dot = body[i].ric_dot.tilde();
-		body[i].Mih = ((Matrix::eye(3)*body[i].m, -body[i].m * body[i].rict)
-			<< (body[i].m*body[i].rict, body[i].Jic - body[i].m * body[i].rict*body[i].rict));
-		body[i].Fic << 0, 0, body[i].m*g;
-		body[i].Tic << 0, 0, 0;
-		body[i].Qih = body[i].Fic + body[i].m * body[i].rict_dot*body[i].wi
-			<< body[i].Tic + body[i].rict * body[i].Fic + body[i].m * body[i].rict*body[i].rict_dot*body[i].wi - body[i].wit * body[i].Jic*body[i].wi;
-		// Velocity Coupling
-		body[i].rit_dot = body[i].ri_dot.tilde();
-		if (i == 0) {
-			body[i].dHi = Vector::zeros(3);
-		}
-		else {
-			body[i].dHi = body[i - 1].wit*body[i].Hi;
-		}
-		body[i].Di = (body[i].rit_dot*body[i].Hi + body[i].rit * body[i].dHi
-			<< body[i].dHi)*body[i].qi_dot;
 	}
 }
 
 void Pendulum::dynamics_analysis() {
-	for (int i = num_body - 1; i >= 0; i--) {
-		body[i].Ki = body[i].Mih;
-		body[i].Li = body[i].Qih;
-		if (i != num_body - 1) {
-			body[i].Ki += body[i + 1].Ki;
-			body[i].Li += body[i + 1].Li - body[i + 1].Ki*body[i + 1].Di;
-		}
-	}
+	GeneralizedMassForce();
 
 	Matrix M;
-	Vector Q, dYh;
+	Vector Q;
+
 	for (uint i = 0; i < num_body; i++) {
 		Matrix M_temp;
 		for (uint j = 0; j < num_body; j++) {
@@ -283,13 +241,67 @@ void Pendulum::dynamics_analysis() {
 		Q = Q << body[i].Bi.t()*(body[i].Li - body[i].Ki*D_temp);
 	}
 
-	Matrix fac(6, 6);
-	uint indx[6];
+	Vector dYh(num_body);
+	Matrix fac(num_body, num_body);
+	uint *indx = new uint[num_body];
 	fac = ludcmp(M, indx);
 	dYh = lubksb(fac, indx, Q);
+	delete[] indx;
 
 	for (uint i = 0; i < num_body; i++) {
 		body[i].qi_ddot = dYh(i);
+	}
+}
+
+void Pendulum::GeneralizedMassForce() {
+
+	for (uint i = 0; i < num_body; i++) {
+		// Velocity State
+		body[i].rit = body[i].ri.tilde();
+		body[i].Bi = body[i].rit * body[i].Hi
+			<< body[i].Hi;
+		if (i == 0) {
+			body[i].Yih = body[i].Bi * body[i].qi_dot;
+		}
+		else {
+			body[i].Yih = body[i - 1].Yih + body[i].Bi * body[i].qi_dot;
+		}
+		// Cartesian Velocity
+		body[i].Ti = (Matrix::eye(3), -body[i].rit)
+			<< (Matrix::zeros(3, 3), Matrix::eye(3));
+		body[i].Yib = body[i].Ti * body[i].Yih;
+		body[i].ri_dot << body[i].Yib(0), body[i].Yib(1), body[i].Yib(2);
+		body[i].wi << body[i].Yib(3), body[i].Yib(4), body[i].Yib(5);
+		body[i].wit = body[i].wi.tilde();
+		body[i].ric_dot = body[i].ri_dot + body[i].wit * body[i].rhoi;
+		// Mass & Force
+		body[i].rict = body[i].ric.tilde();
+		body[i].rict_dot = body[i].ric_dot.tilde();
+		body[i].Mih = ((Matrix::eye(3)*body[i].m, -body[i].m * body[i].rict)
+			<< (body[i].m*body[i].rict, body[i].Jic - body[i].m * body[i].rict*body[i].rict));
+		body[i].Fic << 0, 0, body[i].m*g;
+		body[i].Tic << 0, 0, 0;
+		body[i].Qih = body[i].Fic + body[i].m * body[i].rict_dot*body[i].wi
+			<< body[i].Tic + body[i].rict * body[i].Fic + body[i].m * body[i].rict*body[i].rict_dot*body[i].wi - body[i].wit * body[i].Jic*body[i].wi;
+		// Velocity Coupling
+		body[i].rit_dot = body[i].ri_dot.tilde();
+		if (i == 0) {
+			body[i].dHi = Vector::zeros(3);
+		}
+		else {
+			body[i].dHi = body[i - 1].wit*body[i].Hi;
+		}
+		body[i].Di = (body[i].rit_dot*body[i].Hi + body[i].rit * body[i].dHi
+			<< body[i].dHi)*body[i].qi_dot;
+	}
+
+	for (int i = num_body - 1; i >= 0; i--) {
+		body[i].Ki = body[i].Mih;
+		body[i].Li = body[i].Qih;
+		if (i != num_body - 1) {
+			body[i].Ki += body[i + 1].Ki;
+			body[i].Li += body[i + 1].Li - body[i + 1].Ki*body[i + 1].Di;
+		}
 	}
 }
 
